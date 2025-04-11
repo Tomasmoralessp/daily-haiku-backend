@@ -109,55 +109,62 @@ def get_daily_haiku():
 
     return get_haiku_by_id(chosen["id"])
 
+from fastapi.responses import HTMLResponse
+
 @app.get("/haiku/{date}", response_class=HTMLResponse)
 def og_page(request: Request, date: str):
     haiku = get_daily_haiku_by_date(date)
     if not haiku:
         raise HTTPException(status_code=404, detail="Haiku no encontrado.")
 
-    title = haiku.get("title") or "Daily Haiku"
-    content = haiku.get("content") or haiku.get("haiku") or "A beautiful haiku"
-    author = haiku.get("author", "Anonymous")
-    image_url = haiku.get("image_url", f"{SUPABASE_BUCKET_URL}/default.png")
-
-    user_agent = request.headers.get("user-agent", "").lower()
-    is_bot = any(bot in user_agent for bot in ["facebook", "twitter", "whatsapp", "discord", "linkedin", "bot", "crawler"])
-
-    if is_bot:
-        html_content = f"""
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="UTF-8">
-            <meta property="og:title" content="{title} - {author}" />
-            <meta property="og:description" content="{content}" />
-            <meta property="og:image" content="{image_url}" />
-            <meta property="og:url" content="https://dailyhaiku.app/haiku/{date}" />
-            <meta property="og:type" content="article" />
-            <meta name="twitter:card" content="summary_large_image" />
-            <meta name="twitter:title" content="{title} - {author}" />
-            <meta name="twitter:description" content="{content}" />
-            <meta name="twitter:image" content="{image_url}" />
-            <title>{title} - {author}</title>
-        </head>
-        <body></body>
-        </html>
-        """
-        return HTMLResponse(content=html_content)
-
-    # Usuario normal: redirigir al frontend
-    return HTMLResponse(content="""
+    # HTML para todos (bots y usuarios humanos)
+    html_content = f"""
     <!DOCTYPE html>
-    <html lang="en">
+    <html lang="es">
     <head>
         <meta charset="UTF-8" />
+        <meta property="og:title" content="Daily Haiku – {haiku['author']}" />
+        <meta property="og:description" content="{haiku['content']}" />
+        <meta property="og:image" content="{haiku['image_url']}" />
+        <meta property="og:url" content="https://dailyhaiku.app/haiku/{date}" />
+        <meta property="og:type" content="article" />
+
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Daily Haiku – {haiku['author']}" />
+        <meta name="twitter:description" content="{haiku['content']}" />
+        <meta name="twitter:image" content="{haiku['image_url']}" />
+
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Daily Haiku</title>
-        <script type="module" src="/src/main.tsx"></script>
+        <title>Daily Haiku – {date}</title>
+
+        <style>
+            body {{
+                background-color: #000;
+                color: #fff;
+                font-family: sans-serif;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                height: 100vh;
+                font-size: 1.4rem;
+            }}
+        </style>
+
+        <script>
+            setTimeout(() => {{
+                window.location.href = "https://dailyhaiku.app/";
+            }}, 1800);
+        </script>
     </head>
     <body>
-        <div id="root"></div>
+        <div>
+            📅 Showing haiku for <strong>{date}</strong><br/>
+            Redirecting you to today's haiku 🍃
+        </div>
     </body>
     </html>
-    """)
+    """
+    return HTMLResponse(content=html_content)
+
 
