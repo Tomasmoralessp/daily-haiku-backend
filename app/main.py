@@ -6,7 +6,7 @@ from typing import Optional
 import random
 import os
 from fastapi import Request
-
+from fastapi.responses import RedirectResponse
 from supabase import create_client
 from dotenv import load_dotenv
 
@@ -145,21 +145,7 @@ def og_page(request: Request, date: str):
         """
         return HTMLResponse(content=html_content)
 
-    # Usuario normal: redirigir al frontend
-    return HTMLResponse(content="""
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Daily Haiku</title>
-        <script type="module" src="/src/main.tsx"></script>
-    </head>
-    <body>
-        <div id="root"></div>
-    </body>
-    </html>
-    """)
-
+    # Si es usuario normal, redirige a la home
+    return RedirectResponse(url="https://dailyhaiku.app")
 
 
