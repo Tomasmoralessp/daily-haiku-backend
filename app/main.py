@@ -27,7 +27,7 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://dailyhaiku.vercel.app"],
+    allow_origins=["https://dailyhaiku.vercel.app", "http://localhost:8080"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
