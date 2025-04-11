@@ -109,7 +109,7 @@ def get_daily_haiku():
 
     return get_haiku_by_id(chosen["id"])
 
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 
 @app.get("/haiku/{date}", response_class=HTMLResponse)
 def og_page(request: Request, date: str):
@@ -117,54 +117,70 @@ def og_page(request: Request, date: str):
     if not haiku:
         raise HTTPException(status_code=404, detail="Haiku no encontrado.")
 
-    # HTML para todos (bots y usuarios humanos)
-    html_content = f"""
+    user_agent = request.headers.get("user-agent", "").lower()
+    is_bot = any(bot in user_agent for bot in ["facebook", "twitter", "whatsapp", "discord", "linkedin", "bot", "crawler"])
+
+    if is_bot:
+        html_content = f"""
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta property="og:title" content="Daily Haiku - {haiku['author']}" />
+            <meta property="og:description" content="{haiku['content']}" />
+            <meta property="og:image" content="{haiku['image_url']}" />
+            <meta property="og:url" content="https://dailyhaiku.app/haiku/{date}" />
+            <meta property="og:type" content="article" />
+            <meta name="twitter:card" content="summary_large_image" />
+            <meta name="twitter:title" content="Daily Haiku - {haiku['author']}" />
+            <meta name="twitter:description" content="{haiku['content']}" />
+            <meta name="twitter:image" content="{haiku['image_url']}" />
+            <title>Daily Haiku - {haiku['author']}</title>
+        </head>
+        <body></body>
+        </html>
+        """
+        return HTMLResponse(content=html_content)
+
+    # Redirección para humanos, con mensaje y retraso de 2.5s
+    html_redirect = f"""
     <!DOCTYPE html>
-    <html lang="es">
+    <html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <meta property="og:title" content="Daily Haiku – {haiku['author']}" />
-        <meta property="og:description" content="{haiku['content']}" />
-        <meta property="og:image" content="{haiku['image_url']}" />
-        <meta property="og:url" content="https://dailyhaiku.app/haiku/{date}" />
-        <meta property="og:type" content="article" />
-
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Daily Haiku – {haiku['author']}" />
-        <meta name="twitter:description" content="{haiku['content']}" />
-        <meta name="twitter:image" content="{haiku['image_url']}" />
-
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Daily Haiku – {date}</title>
-
+        <title>Redirecting...</title>
         <style>
             body {{
                 background-color: #000;
                 color: #fff;
-                font-family: sans-serif;
+                font-family: 'Inter', sans-serif;
                 display: flex;
+                flex-direction: column;
                 align-items: center;
                 justify-content: center;
-                text-align: center;
                 height: 100vh;
-                font-size: 1.4rem;
+                text-align: center;
+                padding: 2rem;
+            }}
+            a {{
+                color: #38bdf8;
+                text-decoration: underline;
             }}
         </style>
-
         <script>
-            setTimeout(() => {{
+            setTimeout(function() {{
                 window.location.href = "https://dailyhaiku.app/";
-            }}, 1800);
+            }}, 2500);
         </script>
     </head>
     <body>
-        <div>
-            📅 Showing haiku for <strong>{date}</strong><br/>
-            Redirecting you to today's haiku 🍃
-        </div>
+        <h1>📅 Showing haiku for <strong>{date}</strong></h1>
+        <p>Redirecting you to <a href="https://dailyhaiku.app/">today's haiku</a> 🍃</p>
     </body>
     </html>
     """
-    return HTMLResponse(content=html_content)
+
+    return HTMLResponse(content=html_redirect)
 
 
