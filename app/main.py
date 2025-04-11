@@ -118,7 +118,9 @@ def og_page(request: Request, date: str):
         raise HTTPException(status_code=404, detail="Haiku no encontrado.")
 
     user_agent = request.headers.get("user-agent", "").lower()
-    is_bot = any(bot in user_agent for bot in ["facebook", "twitter", "whatsapp", "discord", "linkedin", "bot", "crawler"])
+    is_bot = any(bot in user_agent for bot in [
+        "facebook", "twitter", "whatsapp", "discord", "linkedin", "bot", "crawler"
+    ])
 
     if is_bot:
         html_content = f"""
@@ -142,45 +144,7 @@ def og_page(request: Request, date: str):
         """
         return HTMLResponse(content=html_content)
 
-    # Redirección para humanos, con mensaje y retraso de 2.5s
-    html_redirect = f"""
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Redirecting...</title>
-        <style>
-            body {{
-                background-color: #000;
-                color: #fff;
-                font-family: 'Inter', sans-serif;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                height: 100vh;
-                text-align: center;
-                padding: 2rem;
-            }}
-            a {{
-                color: #38bdf8;
-                text-decoration: underline;
-            }}
-        </style>
-        <script>
-            setTimeout(function() {{
-                window.location.href = "https://dailyhaiku.app/";
-            }}, 2500);
-        </script>
-    </head>
-    <body>
-        <h1>📅 Showing haiku for <strong>{date}</strong></h1>
-        <p>Redirecting you to <a href="https://dailyhaiku.app/">today's haiku</a> 🍃</p>
-    </body>
-    </html>
-    """
-
-    return HTMLResponse(content=html_redirect)
+    # Usuario normal: redirige directo al home
+    return RedirectResponse(url="https://dailyhaiku.app/")
 
 
