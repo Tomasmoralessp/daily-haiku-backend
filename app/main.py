@@ -109,18 +109,19 @@ def get_daily_haiku():
 
     return get_haiku_by_id(chosen["id"])
 
-from fastapi.responses import HTMLResponse, RedirectResponse
-
 @app.get("/haiku/{date}", response_class=HTMLResponse)
 def og_page(request: Request, date: str):
     haiku = get_daily_haiku_by_date(date)
     if not haiku:
         raise HTTPException(status_code=404, detail="Haiku no encontrado.")
 
+    title = haiku.get("title") or "Daily Haiku"
+    content = haiku.get("content") or haiku.get("haiku") or "A beautiful haiku"
+    author = haiku.get("author", "Anonymous")
+    image_url = haiku.get("image_url", f"{SUPABASE_BUCKET_URL}/default.png")
+
     user_agent = request.headers.get("user-agent", "").lower()
-    is_bot = any(bot in user_agent for bot in [
-        "facebook", "twitter", "whatsapp", "discord", "linkedin", "bot", "crawler"
-    ])
+    is_bot = any(bot in user_agent for bot in ["facebook", "twitter", "whatsapp", "discord", "linkedin", "bot", "crawler"])
 
     if is_bot:
         html_content = f"""
@@ -128,23 +129,37 @@ def og_page(request: Request, date: str):
         <html lang="es">
         <head>
             <meta charset="UTF-8">
-            <meta property="og:title" content="Daily Haiku - {haiku['author']}" />
-            <meta property="og:description" content="{haiku['content']}" />
-            <meta property="og:image" content="{haiku['image_url']}" />
+            <meta property="og:title" content="{title} - {author}" />
+            <meta property="og:description" content="{content}" />
+            <meta property="og:image" content="{image_url}" />
             <meta property="og:url" content="https://dailyhaiku.app/haiku/{date}" />
             <meta property="og:type" content="article" />
             <meta name="twitter:card" content="summary_large_image" />
-            <meta name="twitter:title" content="Daily Haiku - {haiku['author']}" />
-            <meta name="twitter:description" content="{haiku['content']}" />
-            <meta name="twitter:image" content="{haiku['image_url']}" />
-            <title>Daily Haiku - {haiku['author']}</title>
+            <meta name="twitter:title" content="{title} - {author}" />
+            <meta name="twitter:description" content="{content}" />
+            <meta name="twitter:image" content="{image_url}" />
+            <title>{title} - {author}</title>
         </head>
         <body></body>
         </html>
         """
         return HTMLResponse(content=html_content)
 
-    # Usuario normal: redirige directo al home
-    return RedirectResponse(url="https://dailyhaiku.app/")
+    # Usuario normal: redirigir al frontend
+    return HTMLResponse(content="""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Daily Haiku</title>
+        <script type="module" src="/src/main.tsx"></script>
+    </head>
+    <body>
+        <div id="root"></div>
+    </body>
+    </html>
+    """)
+
 
 
