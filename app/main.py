@@ -115,44 +115,24 @@ def og_page(request: Request, date: str):
     if not haiku:
         raise HTTPException(status_code=404, detail="Haiku no encontrado.")
 
-    user_agent = request.headers.get("user-agent", "").lower()
-    is_bot = any(bot in user_agent for bot in ["facebook", "twitter", "whatsapp", "discord", "linkedin", "bot", "crawler"])
-
-    if is_bot:
-        # DEVOLVEMOS OG META TAGS PARA SCRAPERS
-        html_content = f"""
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="UTF-8">
-            <meta property="og:title" content="{haiku['title']} - {haiku['author']}" />
-            <meta property="og:description" content="{haiku['content']}" />
-            <meta property="og:image" content="{haiku['image_url']}" />
-            <meta property="og:url" content="https://dailyhaiku.app/haiku/{date}" />
-            <meta property="og:type" content="article" />
-            <meta name="twitter:card" content="summary_large_image" />
-            <meta name="twitter:title" content="{haiku['title']} - {haiku['author']}" />
-            <meta name="twitter:description" content="{haiku['content']}" />
-            <meta name="twitter:image" content="{haiku['image_url']}" />
-            <title>{haiku['title']} - {haiku['author']}</title>
-        </head>
-        <body></body>
-        </html>
-        """
-        return HTMLResponse(content=html_content)
-
-    # USUARIO NORMAL: DEVOLVEMOS UN SHELL QUE RENDERIZA LA SPA DE VITE
-    return HTMLResponse(content="""
+    # 🔧 TEMPORAL: SIEMPRE DEVUELVE META TAGS PARA DEBUG
+    html_content = f"""
     <!DOCTYPE html>
-    <html lang="en">
+    <html lang="es">
     <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Daily Haiku</title>
-        <script type="module" src="/src/main.tsx"></script>
+        <meta charset="UTF-8">
+        <meta property="og:title" content="{haiku['title']} - {haiku['author']}" />
+        <meta property="og:description" content="{haiku['content']}" />
+        <meta property="og:image" content="{haiku['image_url']}" />
+        <meta property="og:url" content="https://dailyhaiku.app/haiku/{date}" />
+        <meta property="og:type" content="article" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="{haiku['title']} - {haiku['author']}" />
+        <meta name="twitter:description" content="{haiku['content']}" />
+        <meta name="twitter:image" content="{haiku['image_url']}" />
+        <title>{haiku['title']} - {haiku['author']}</title>
     </head>
-    <body>
-        <div id="root"></div>
-    </body>
+    <body></body>
     </html>
-    """)
+    """
+    return HTMLResponse(content=html_content)
