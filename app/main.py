@@ -156,6 +156,7 @@ def get_haiku_history():
 
     for row in history_rows:
         haiku = get_haiku_data_by_date(row["date"])
+        haiku["date"] = row["date"]
         haiku_history.append(haiku)
         
     return haiku_history
