@@ -148,4 +148,28 @@ def og_page(request: Request, date: str):
     # Si es usuario normal, redirige a la home
     return RedirectResponse(url="https://dailyhaiku.app")
 
+@app.get("/api/haiku/history")
+def get_haiku_history():
+    history_rows = supabase.table("daily_haikus").select("date").order("date", desc=True).execute().data
+
+    haiku_history = []
+
+    for row in history_rows:
+        haiku = get_haiku_data_by_date(row["date"])
+        haiku_history.append(haiku)
+        
+    return haiku_history
+
+@app.get("/api/haiku/{date}")
+def get_haiku_data_by_date(date: str):
+    haiku = get_daily_haiku_by_date(date)
+    if not haiku:
+        raise HTTPException(status_code=404, detail="Haiku not found.")
+
+    return haiku
+
+
+
+
+
 
