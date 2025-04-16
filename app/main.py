@@ -109,45 +109,6 @@ def get_daily_haiku():
 
     return get_haiku_by_id(chosen["id"])
 
-@app.get("/haiku/{date}", response_class=HTMLResponse)
-def og_page(request: Request, date: str):
-    haiku = get_daily_haiku_by_date(date)
-    if not haiku:
-        raise HTTPException(status_code=404, detail="Haiku no encontrado.")
-
-    title = haiku.get("title") or "Daily Haiku"
-    content = haiku.get("content") or haiku.get("haiku") or "A beautiful haiku"
-    author = haiku.get("author", "Anonymous")
-    image_url = haiku.get("image_url", f"{SUPABASE_BUCKET_URL}/default.png")
-
-    user_agent = request.headers.get("user-agent", "").lower()
-    is_bot = any(bot in user_agent for bot in ["facebook", "twitter", "whatsapp", "discord", "linkedin", "bot", "crawler"])
-
-    if is_bot:
-        html_content = f"""
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="UTF-8">
-            <meta property="og:title" content="{title} - {author}" />
-            <meta property="og:description" content="{content}" />
-            <meta property="og:image" content="{image_url}" />
-            <meta property="og:url" content="https://dailyhaiku.app/haiku/{date}" />
-            <meta property="og:type" content="article" />
-            <meta name="twitter:card" content="summary_large_image" />
-            <meta name="twitter:title" content="{title} - {author}" />
-            <meta name="twitter:description" content="{content}" />
-            <meta name="twitter:image" content="{image_url}" />
-            <title>{title} - {author}</title>
-        </head>
-        <body></body>
-        </html>
-        """
-        return HTMLResponse(content=html_content)
-
-    # Si es usuario normal, redirige a la home
-    return RedirectResponse(url="https://dailyhaiku.app")
-
 @app.get("/api/haiku/history")
 def get_haiku_history():
     history_rows = supabase.table("daily_haikus").select("date").order("date", desc=True).execute().data
