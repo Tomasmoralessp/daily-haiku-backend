@@ -12,6 +12,8 @@ from dotenv import load_dotenv
 from fastapi import Query
 from typing import List, Dict, Optional
 import httpx
+from fastapi import Header
+
 load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -187,7 +189,10 @@ def get_haiku_data_by_date(date: str):
 
 
 @app.post("/send_daily_haiku_email")
-async def trigger_daily_email():
+async def trigger_daily_email(x_cron_secret: str = Header(...)):
+    if x_cron_secret != os.getenv("CRON_SECRET"):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
     today = date.today().isoformat()
     haiku_record = supabase.table("daily_haikus").select("*").eq("date", today).execute().data
 
@@ -197,7 +202,18 @@ async def trigger_daily_email():
     haiku = get_haiku_by_id(haiku_record[0]["haiku_id"])
 
     subject = f"Haiku for {today}"
-    body = f"{haiku['haiku']}\n\n— {haiku['author']} ({haiku['season']})"
+    body = (
+    "Hello poetry lover,\n\n"
+    f"Here’s your haiku for today:\n\n"
+    f"{haiku['haiku']}\n\n"
+    f"— {haiku['author']} ({haiku['season']})\n\n"
+    "You can discover more haikus every day at:\n"
+    "https://dailyhaiku.vercel.app\n\n"
+    "---\n"
+    "Sent with 🌸 by DailyHaiku"
+)
+
+
 
     async with httpx.AsyncClient() as client:
         response = await client.post(
