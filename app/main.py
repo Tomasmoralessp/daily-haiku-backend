@@ -11,13 +11,14 @@ from supabase import create_client
 from dotenv import load_dotenv
 from fastapi import Query
 from typing import List, Dict, Optional
-
+import httpx
 load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 SUPABASE_BUCKET_URL = os.getenv("SUPABASE_BUCKET_URL")
+BUTTONDOWN_API_KEY = os.getenv("BUTTONDOWN_API_KEY")
 
 
 # === CONFIGURACIÓN ===
@@ -185,7 +186,38 @@ def get_haiku_data_by_date(date: str):
     return haiku
 
 
+@app.post("/send_daily_haiku_email")
+async def send_daily_haiku_email():
+    today = date.today().isoformat()
+    haiku_record = supabase.table("daily_haikus").select("*").eq("date", today).execute().data
 
+    if not haiku_record:
+        return {"status": "no haiku assigned for today"}
 
+    haiku = get_haiku_by_id(haiku_record[0]["haiku_id"])
 
+    subject = f"Haiku for {today}"
+    body = f"{haiku['haiku']}\n\n— {haiku['author']} ({haiku['season']})"
 
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://api.buttondown.email/v1/emails",
+            headers={
+                "Authorization": f"Token {BUTTONDOWN_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "subject": subject,
+                "body": body,
+                "tags": ["dailyhaiku"]
+            }
+        )
+
+    if response.status_code == 201:
+        return {"status": "email sent"}
+    else:
+        return {
+            "status": "failed",
+            "error": response.status_code,
+            "message": response.text
+        }
