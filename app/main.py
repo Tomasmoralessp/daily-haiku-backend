@@ -101,7 +101,27 @@ def get_daily_haiku():
     remaining = [h for h in all if h["id"] not in used_ids]
 
     if not remaining:
-        raise HTTPException(status_code=404, detail=f"No haikus left for season: {season}")
+        # Fallback: try all haikus not yet used
+        all_haikus = supabase.table("haikus").select("*").execute().data or []
+        remaining = [h for h in all_haikus if h["id"] not in used_ids]
+
+    if not remaining:
+        # Calculate how many haikus were shown before the end
+        total_days = len(used_ids)
+        closing_message = {
+            "haiku": "The journey has ended.\nEach verse now belongs to you.\nThank you for reading.",
+            "author": "DailyHaiku",
+            "season": "eternal",
+            "date": today_str,
+            "title": "Final Haiku",
+            "notes": f"DailyHaiku shared {total_days} unique poems with the world.",
+            "source": "memory",
+            "keywords": ["goodbye", "gratitude", "legacy"],
+            "image_url": f"{SUPABASE_BUCKET_URL}/final_haiku.png"
+        }
+        return closing_message
+
+
 
     chosen = random.choice(remaining)
     supabase.table("daily_haikus").insert({
