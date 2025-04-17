@@ -9,6 +9,8 @@ from fastapi import Request
 from fastapi.responses import RedirectResponse
 from supabase import create_client
 from dotenv import load_dotenv
+from fastapi import Query
+from typing import List, Dict, Optional
 
 load_dotenv()
 
@@ -109,18 +111,50 @@ def get_daily_haiku():
 
     return get_haiku_by_id(chosen["id"])
 
-@app.get("/api/haiku/history")
-def get_haiku_history():
-    history_rows = supabase.table("daily_haikus").select("date").order("date", desc=True).execute().data
+PAGE_SIZE_DEFAULT = 20
+PAGE_SIZE_MAX = 100   # evita cargas enormes por error
 
-    haiku_history = []
+@app.get("/api/haiku/history", response_model=Dict)
+def get_haiku_history(
+    page: int = Query(1, ge=1),
+    limit: int = Query(PAGE_SIZE_DEFAULT, ge=1, le=PAGE_SIZE_MAX),
+):
+    """
+    Returns a paginated list of haikus sorted by date DESC.
+    Query params:
+      - page  (int)  : page number, 1‑based
+      - limit (int)  : items per page (max = 100)
+    Response:
+    {
+      "items"   : [ {haiku…}, … ],
+      "nextPage": 2 | null
+    }
+    """
+    offset = (page - 1) * limit
+    # 1. Get `date` column for the requested slice
+    rows = (
+        supabase.table("daily_haikus")
+        .select("date")
+        .order("date", desc=True)
+        .range(offset, offset + limit - 1)
+        .execute()
+        .data
+    )
 
-    for row in history_rows:
+    if not rows:
+        # page out of range → empty list & nextPage = null
+        return {"items": [], "nextPage": None}
+
+    haiku_history: List[Dict] = []
+    for row in rows:
         haiku = get_haiku_data_by_date(row["date"])
         haiku["date"] = row["date"]
         haiku_history.append(haiku)
-        
-    return haiku_history
+
+    # 2. Decide if there is another page
+    next_page: Optional[int] = page + 1 if len(rows) == limit else None
+
+    return {"items": haiku_history, "nextPage": next_page}
 
 @app.get("/api/haiku/{date}")
 def get_haiku_data_by_date(date: str):
