@@ -186,7 +186,7 @@ def get_haiku_data_by_date(date: str):
     return haiku
 
 
-@app.get("/send_daily_haiku_email")
+@app.post("/send_daily_haiku_email")
 async def trigger_daily_email():
     today = date.today().isoformat()
     haiku_record = supabase.table("daily_haikus").select("*").eq("date", today).execute().data
@@ -209,7 +209,8 @@ async def trigger_daily_email():
             json={
                 "subject": subject,
                 "body": body,
-                "tags": ["dailyhaiku"]
+                "tags": ["dailyhaiku"],
+                "publish": True
             }
         )
 
