@@ -205,7 +205,8 @@ async def trigger_daily_email(x_cron_secret: str = Header(...)):
     if x_cron_secret != os.getenv("CRON_SECRET"):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    today = date.today().isoformat()
+    tz_offset = timezone(timedelta(hours=1))  # UTC+1 para Canarias
+    today = datetime.now(tz_offset).date().isoformat()
     haiku_record = supabase.table("daily_haikus").select("*").eq("date", today).execute().data
 
     if not haiku_record:
