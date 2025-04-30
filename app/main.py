@@ -253,7 +253,8 @@ async def trigger_daily_email(x_cron_secret: str = Header(...)):
 
 @app.get("/haiku/today")
 def get_today_haiku():
-    today = date.today().strftime("%Y-%m-%d")
+    tz_offset = timezone(timedelta(hours=1))  # UTC+1 para Canarias
+    today = datetime.now(tz_offset).strftime("%Y-%m-%d")
     record = supabase.table("daily_haikus").select("*").eq("date", today).execute()
 
     if not record.data:
