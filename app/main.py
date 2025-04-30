@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
-from datetime import date, datetime
+from datetime import date, datetime, timezone, timedelta
 from typing import Optional
 import random
 import os
@@ -87,7 +87,8 @@ def get_daily_haiku_by_date(date_str: str) -> Optional[dict]:
 
 @app.get("/daily_haiku")
 def get_daily_haiku():
-    today = date.today()
+    tz_offset = timezone(timedelta(hours=1))
+    today = datetime.now(tz_offset).date()
     today_str = today.strftime("%Y-%m-%d")
     season = get_season(today)
 
