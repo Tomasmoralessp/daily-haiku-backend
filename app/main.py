@@ -249,3 +249,20 @@ async def trigger_daily_email(x_cron_secret: str = Header(...)):
             "error": response.status_code,
             "message": response.text
         }
+
+@app.get("/haiku/today")
+def get_today_haiku():
+    today = date.today().strftime("%Y-%m-%d")
+    record = supabase.table("daily_haikus").select("*").eq("date", today).execute()
+
+    if not record.data:
+        raise HTTPException(status_code=404, detail="No haiku assigned for today")
+
+    haiku_id = record.data[0]["haiku_id"]
+    haiku = get_haiku_by_id(haiku_id)
+
+    if not haiku:
+        raise HTTPException(status_code=500, detail="Assigned haiku not found")
+
+    return haiku
+
