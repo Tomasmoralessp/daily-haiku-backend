@@ -91,27 +91,33 @@ def get_daily_haiku():
     today_str = today.strftime("%Y-%m-%d")
     season = get_season(today)
 
+    # 1. ¿Ya existe uno para hoy?
     existing = supabase.table("daily_haikus").select("*").eq("date", today_str).execute()
     if existing.data:
-        return get_haiku_by_id(existing.data[0]["haiku_id"])
+        haiku = get_haiku_by_id(existing.data[0]["haiku_id"])
+        if haiku:
+            return haiku
+        else:
+            raise HTTPException(status_code=500, detail="Haiku assigned but not found")
 
+    # 2. Obtener haikus disponibles para la estación
     used_ids = [
         row["haiku_id"]
         for row in supabase.table("daily_haikus").select("haiku_id").execute().data or []
     ]
 
-    all = supabase.table("haikus").select("*").eq("season", season).execute().data
-    remaining = [h for h in all if h["id"] not in used_ids]
+    seasonal = supabase.table("haikus").select("*").eq("season", season).execute().data
+    remaining = [h for h in seasonal if h["id"] not in used_ids]
 
+    # 3. Fallback a todos los haikus no usados si no hay suficientes de la estación
     if not remaining:
-        # Fallback: try all haikus not yet used
         all_haikus = supabase.table("haikus").select("*").execute().data or []
         remaining = [h for h in all_haikus if h["id"] not in used_ids]
 
+    # 4. Si aún así no hay → mensaje final
     if not remaining:
-        # Calculate how many haikus were shown before the end
         total_days = len(used_ids)
-        closing_message = {
+        return {
             "haiku": "The journey has ended.\nEach verse now belongs to you.\nThank you for reading.",
             "author": "DailyHaiku",
             "season": "eternal",
@@ -122,17 +128,21 @@ def get_daily_haiku():
             "keywords": ["goodbye", "gratitude", "legacy"],
             "image_url": f"{SUPABASE_BUCKET_URL}/final_haiku.png"
         }
-        return closing_message
 
-
-
+    # 5. Asignar uno aleatorio
     chosen = random.choice(remaining)
-    supabase.table("daily_haikus").insert({
-        "date": today_str,
-        "haiku_id": chosen["id"]
-    }).execute()
+
+    try:
+        supabase.table("daily_haikus").insert({
+            "date": today_str,
+            "haiku_id": chosen["id"]
+        }).execute()
+    except Exception as e:
+        print(f"[ERROR] Failed to insert daily haiku for {today_str}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to insert haiku")
 
     return get_haiku_by_id(chosen["id"])
+
 
 PAGE_SIZE_DEFAULT = 20
 PAGE_SIZE_MAX = 100   # evita cargas enormes por error
