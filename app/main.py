@@ -85,7 +85,6 @@ def get_daily_haiku_by_date(date_str: str) -> Optional[dict]:
     return get_haiku_by_id(record.data[0]["haiku_id"])
 
 # === ENDPOINTS ===
-
 @app.get("/daily_haiku")
 def get_daily_haiku():
     tz_offset = timezone(timedelta(hours=1))
@@ -93,13 +92,17 @@ def get_daily_haiku():
     today_str = today.strftime("%Y-%m-%d")
     season = get_season(today)
 
+    print(f"[INFO] Generating haiku for {today_str} ({season})")
+
     # 1. ¿Ya existe uno para hoy?
     existing = supabase.table("daily_haikus").select("*").eq("date", today_str).execute()
     if existing.data:
         haiku = get_haiku_by_id(existing.data[0]["haiku_id"])
         if haiku:
+            print("[INFO] Haiku already assigned for today.")
             return haiku
         else:
+            print("[ERROR] Haiku ID assigned today is invalid.")
             raise HTTPException(status_code=500, detail="Haiku assigned but not found")
 
     # 2. Obtener haikus disponibles para la estación
@@ -111,14 +114,15 @@ def get_daily_haiku():
     seasonal = supabase.table("haikus").select("*").eq("season", season).execute().data
     remaining = [h for h in seasonal if h["id"] not in used_ids]
 
-    # 3. Fallback a todos los haikus no usados si no hay suficientes de la estación
+    # 3. Fallback a todos si no quedan de la estación
     if not remaining:
         all_haikus = supabase.table("haikus").select("*").execute().data or []
         remaining = [h for h in all_haikus if h["id"] not in used_ids]
 
-    # 4. Si aún así no hay → mensaje final
+    # 4. Final si no hay ninguno
     if not remaining:
         total_days = len(used_ids)
+        print("[INFO] No haikus left. Sending final message.")
         return {
             "haiku": "The journey has ended.\nEach verse now belongs to you.\nThank you for reading.",
             "author": "DailyHaiku",
@@ -134,16 +138,25 @@ def get_daily_haiku():
     # 5. Asignar uno aleatorio
     chosen = random.choice(remaining)
 
+    if not chosen or "id" not in chosen or not chosen["id"]:
+        print(f"[ERROR] Invalid haiku selected: {chosen}")
+        raise HTTPException(status_code=500, detail="Selected haiku is invalid.")
+
     try:
-        supabase.table("daily_haikus").insert({
+        print(f"[INFO] Inserting haiku {chosen['id']} for {today_str}")
+        result = supabase.table("daily_haikus").upsert({
             "date": today_str,
-            "haiku_id": chosen["id"]
+            "haiku_id": int(chosen["id"])
         }).execute()
+        print(f"[SUCCESS] Insert result: {result}")
     except Exception as e:
+        import traceback
         print(f"[ERROR] Failed to insert daily haiku for {today_str}: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail="Failed to insert haiku")
 
     return get_haiku_by_id(chosen["id"])
+
 
 #Redeploy
 
