@@ -13,6 +13,7 @@ from fastapi import Query
 from typing import List, Dict, Optional
 import httpx
 from fastapi import Header
+from fastapi import Path
 
 load_dotenv()
 
@@ -191,12 +192,30 @@ def get_haiku_history(
 
     return {"items": haiku_history, "nextPage": next_page}
 
-@app.get("/api/haiku/{date}")
-def get_haiku_data_by_date(date: str):
+@app.get("/haiku/today")
+def get_today_haiku():
+    tz_offset = timezone(timedelta(hours=1))  # UTC+1 para Canarias
+    today = datetime.now(tz_offset).strftime("%Y-%m-%d")
+    record = supabase.table("daily_haikus").select("*").eq("date", today).execute()
+
+    if not record.data:
+        raise HTTPException(status_code=404, detail="No haiku assigned for today")
+
+    haiku_id = record.data[0]["haiku_id"]
+    haiku = get_haiku_by_id(haiku_id)
+
+    if not haiku:
+        raise HTTPException(status_code=500, detail="Assigned haiku not found")
+
+    return haiku
+
+@app.get("/haiku/{date}")
+def get_haiku_data_by_date(
+    date: str = Path(..., pattern=r"^\d{4}-\d{2}-\d{2}$")  # fuerza formato de fecha YYYY-MM-DD
+):
     haiku = get_daily_haiku_by_date(date)
     if not haiku:
         raise HTTPException(status_code=404, detail="Haiku not found.")
-
     return haiku
 
 
@@ -252,20 +271,5 @@ async def trigger_daily_email(x_cron_secret: str = Header(...)):
             "message": response.text
         }
 
-@app.get("/haiku/today")
-def get_today_haiku():
-    tz_offset = timezone(timedelta(hours=1))  # UTC+1 para Canarias
-    today = datetime.now(tz_offset).strftime("%Y-%m-%d")
-    record = supabase.table("daily_haikus").select("*").eq("date", today).execute()
 
-    if not record.data:
-        raise HTTPException(status_code=404, detail="No haiku assigned for today")
-
-    haiku_id = record.data[0]["haiku_id"]
-    haiku = get_haiku_by_id(haiku_id)
-
-    if not haiku:
-        raise HTTPException(status_code=500, detail="Assigned haiku not found")
-
-    return haiku
 
